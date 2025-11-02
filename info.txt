@@ -1,0 +1,756 @@
+================================================================================
+                    DOCUMENTAÇÃO DE ENDPOINTS - RPG SYSTEM
+================================================================================
+
+================================================================================
+1. CLASSE BASE: PERSONAGEM
+================================================================================
+
+ATRIBUTOS PÚBLICOS:
+-------------------
+personagem.nome          : str   - Nome do personagem
+personagem.vida          : int   - Pontos de vida atual
+personagem.status        : dict  - Dicionário de status ativos {nome: duração}
+
+MÉTODOS PÚBLICOS:
+-----------------
+aplicar_dano(dano: int) -> None
+    └─ Aplica dano ao personagem considerando defesas e status
+    └─ Respeita imunidade (bomba_de_glitter) e redução (panela)
+    └─ Define vida = 0 se HP < 0
+
+aplicar_status(nome_status: str, duracao: int) -> None
+    └─ Adiciona ou atualiza um status temporário
+    └─ Sobrescreve duração se status já existir
+
+atualizar_status() -> None
+    └─ Processa efeitos over time (DoT/HoT)
+    └─ Decrementa duração de todos os status
+    └─ Remove status com duração = 0
+    └─ Efeitos processados:
+        • glitter_mortal: 15 dano/turno
+        • musica_da_cura: +16 HP/turno
+        • microfonada: 15 dano/turno
+        • sangramento: 5 dano/turno
+
+esta_congelado() -> bool
+    └─ Verifica se status 'cristal_de_gelo' está ativo
+    └─ Personagem congelado não pode agir
+
+esta_preso() -> bool
+    └─ Verifica se status 'prissao' está ativo
+    └─ Personagem preso não pode agir
+
+esta_fugindo() -> bool
+    └─ Verifica se status 'fuga' está ativo
+    └─ Personagem em fuga não pode ser atacado
+
+esta_confuso() -> bool
+    └─ Verifica se status 'balada_da_confusao' está ativo
+    └─ Personagem confuso ataca alvos aleatórios
+
+mostrar_status() -> None
+    └─ Imprime no console: nome, vida e status ativos
+
+__str__() -> str
+    └─ Retorna representação formatada do personagem
+
+
+================================================================================
+2. FADA (herda Personagem)
+================================================================================
+
+STATS:
+------
+Vida Máxima: 65
+Dano Base: 1
+
+ATRIBUTOS ESPECÍFICOS:
+----------------------
+fada.dano : int - 1
+
+MÉTODOS PÚBLICOS:
+-----------------
+bomba_de_glitter() -> None
+    └─ Aplica status 'bomba_de_glitter' por 3 turnos
+    └─ Efeito: Imunidade total a dano
+
+cristal_de_gelo(alvo: Personagem) -> None
+    └─ Aplica status 'cristal_de_gelo' no alvo por 2 turnos
+    └─ Efeito: Alvo não pode agir
+
+glitter_mortal(alvo: Personagem) -> None
+    └─ Aplica status 'glitter_mortal' no alvo por 4 turnos
+    └─ Efeito: 15 dano/turno (total: 60 dano)
+
+atacar(alvo: Personagem) -> None
+    ⚠️ BUG CRÍTICO: Aplica dano em SI MESMO, não no alvo!
+    └─ Código atual: self.aplicar_dano(self.dano)
+    └─ CORREÇÃO: alvo.aplicar_dano(self.dano)
+
+
+================================================================================
+3. HUMANO (herda Personagem)
+================================================================================
+
+STATS:
+------
+Vida Máxima: 100
+Dano Base: 10
+
+MÉTODOS PÚBLICOS:
+-----------------
+atacar(alvo: Personagem) -> None
+    └─ Causa 10 de dano direto ao alvo
+
+
+================================================================================
+4. BARDO (herda Humano)
+================================================================================
+
+STATS:
+------
+Vida Máxima: 100
+Dano Base: 10
+
+ATRIBUTOS ESPECÍFICOS:
+----------------------
+bardo.classe : str - "bardo"
+
+MÉTODOS PÚBLICOS:
+-----------------
+balada_da_confusao(alvo: Personagem) -> None
+    └─ 30% de chance de aplicar status 'balada_da_confusao' por 2 turnos
+    └─ Efeito: Alvo ataca personagens aleatórios
+
+musica_da_cura() -> None
+    └─ Aplica status 'musica_da_cura' por 2 turnos
+    └─ Efeito: +16 HP/turno (total: +32 HP)
+
+microfonada(alvo: Personagem) -> None
+    └─ Aplica status 'microfonada' no alvo por 4 turnos
+    └─ Efeito: 15 dano/turno (total: 60 dano)
+
+atacar(alvo: Personagem) -> None
+    └─ Causa 10 de dano direto (herdado de Humano)
+
+
+================================================================================
+5. COZINHEIRO (herda Humano)
+================================================================================
+
+STATS:
+------
+Vida Máxima: 100
+Dano Base: 10
+
+ATRIBUTOS ESPECÍFICOS:
+----------------------
+cozinheiro.classe : str - "cozinheiro"
+
+MÉTODOS PÚBLICOS:
+-----------------
+batata_quente(alvo: Personagem) -> None
+    └─ Causa 10 de dano direto ao alvo
+
+receita_da_mamae() -> None
+    └─ Cura instantânea: +15 HP
+    └─ Não possui limite máximo de vida
+
+panela() -> None
+    └─ Aplica status 'panela' por 1 turno
+    └─ Efeito: Próximo dano recebido é reduzido em 10
+    └─ Consumido automaticamente ao receber dano
+
+atacar(alvo: Personagem) -> None
+    └─ Causa 10 de dano direto (herdado de Humano)
+
+
+================================================================================
+6. ELFO - DRUIDA (herda Personagem)
+================================================================================
+
+STATS:
+------
+Vida Máxima: 100
+Dano Base: 10 (apenas ataque padrão)
+
+ATRIBUTOS ESPECÍFICOS:
+----------------------
+druida.classe : str - "druida"
+
+MÉTODOS PÚBLICOS:
+-----------------
+se_transforma(alvo: Personagem) -> None
+    └─ Causa 20 de dano direto ao alvo
+    └─ Representa transformação em animal
+
+fuga() -> None
+    └─ Aplica status 'fuga' por 1 turno
+    └─ Efeito: Não pode ser atacado
+
+prissao(alvo: Personagem) -> None
+    ⚠️ TYPO: Nome do método deveria ser "prisao"
+    └─ Aplica status 'prisao' no alvo por 2 turnos
+    └─ Efeito: Alvo não pode agir
+    └─ Nota: Código usa 'prisao', mas verifica 'prissao' em esta_preso()
+
+ATAQUE PADRÃO:
+--------------
+Não possui método atacar() específico
+Use: alvo.aplicar_dano(10) diretamente
+
+
+================================================================================
+7. ELFO - ARQUEIRO (herda Personagem)
+================================================================================
+
+STATS:
+------
+Vida Máxima: 100
+Dano Base: 10 (apenas ataque padrão)
+
+ATRIBUTOS ESPECÍFICOS:
+----------------------
+arqueiro.classe : str - "arqueiro"
+
+MÉTODOS PÚBLICOS:
+-----------------
+arco_e_flecha(alvo: Personagem) -> None
+    ⚠️ BUG: Dano crítico não é aplicado!
+    └─ 30% chance: 21 de dano (não aplicado no código)
+    └─ 70% chance: 7 de dano
+    └─ CORREÇÃO NECESSÁRIA: Adicionar alvo.aplicar_dano(dano) no if
+
+agilidade() -> None
+    └─ Aplica status 'fuga' por 1 turno
+    └─ Efeito: Não pode ser atacado
+
+cristal_de_gelo(alvo: Personagem) -> None
+    └─ Aplica status 'cristal_de_gelo' no alvo por 2 turnos
+    └─ Efeito: Alvo não pode agir
+
+ATAQUE PADRÃO:
+--------------
+Não possui método atacar() específico
+Use: alvo.aplicar_dano(10) diretamente
+
+
+================================================================================
+8. GOLEM - INIMIGO TANQUE (herda Personagem)
+================================================================================
+
+STATS:
+------
+Vida Máxima: 200
+Dano Base: 8
+Defesa Passiva: 5
+
+ATRIBUTOS ESPECÍFICOS:
+----------------------
+golem.dano    : int - 8
+golem.defesa  : int - 5
+
+MÉTODOS PÚBLICOS:
+-----------------
+aplicar_dano(dano: int) -> None
+    └─ Override: Reduz TODO dano recebido em 5 automaticamente
+    └─ Dano mínimo: 0 (não pode ser negativo)
+
+investida(alvo: Personagem) -> None
+    └─ Causa 12 de dano direto ao alvo
+
+regeneracao() -> None
+    └─ Cura +20 HP
+    └─ Máximo: 200 HP (não ultrapassa vida máxima)
+
+pele_de_pedra() -> None
+    ⚠️ NÃO IMPLEMENTADO: Status não tem efeito real
+    └─ Aplica status 'pele_de_pedra' por 2 turnos
+    └─ Efeito esperado: Redução adicional de dano
+    └─ PENDENTE: Implementar verificação em aplicar_dano()
+
+atacar(alvo: Personagem) -> None
+    └─ Causa 8 de dano direto ao alvo
+
+
+================================================================================
+9. DEMÔNIO - INIMIGO ATACANTE (herda Personagem)
+================================================================================
+
+STATS:
+------
+Vida Máxima: 80
+Dano Base: 25
+
+ATRIBUTOS ESPECÍFICOS:
+----------------------
+demonio.dano : int - 25
+
+MÉTODOS PÚBLICOS:
+-----------------
+garras_infernais(alvo: Personagem) -> None
+    └─ Causa 30 de dano direto ao alvo
+
+furia() -> None
+    └─ Aplica status 'furia' por 2 turnos
+    └─ Efeito: Dobra o dano do método atacar()
+
+drenar_vida(alvo: Personagem) -> None
+    └─ Causa 15 de dano ao alvo
+    └─ Cura 15 HP (baseado no dano causado)
+    └─ Máximo: 80 HP
+
+atacar(alvo: Personagem) -> None
+    └─ Causa 25 de dano (50 se status 'furia' ativo)
+    └─ Verifica automaticamente se está em fúria
+
+
+================================================================================
+10. ASSASSINO - INIMIGO CRÍTICO (herda Personagem)
+================================================================================
+
+STATS:
+------
+Vida Máxima: 90
+Dano Base: 12
+Chance Crítico: 40%
+Multiplicador Crítico: 2.5x
+
+ATRIBUTOS ESPECÍFICOS:
+----------------------
+assassino.dano                    : int   - 12
+assassino.chance_critico          : int   - 40
+assassino.multiplicador_critico   : float - 2.5
+
+MÉTODOS PRIVADOS:
+-----------------
+_calcular_critico(dano_base: int) -> int
+    └─ Uso interno: calcula se ataque é crítico
+    └─ 40% chance de retornar dano_base * 2.5
+    └─ Imprime mensagem de crítico no console
+
+MÉTODOS PÚBLICOS:
+-----------------
+apunhalar(alvo: Personagem) -> None
+    └─ Causa 18 de dano (45 se crítico)
+    └─ Aplica status 'sangramento' por 3 turnos
+    └─ Efeito sangramento: 5 dano/turno (total: 15)
+
+furtividade() -> None
+    └─ Aplica status 'fuga' por 1 turno
+    └─ Efeito: Não pode ser atacado
+
+golpe_preciso(alvo: Personagem) -> None
+    └─ Crítico GARANTIDO: 30 de dano (12 * 2.5)
+    └─ Imprime mensagem especial no console
+
+atacar(alvo: Personagem) -> None
+    └─ Causa 12 de dano (30 se crítico com 40% chance)
+    └─ Usa _calcular_critico() automaticamente
+
+
+================================================================================
+11. DRAGÃO - CHEFE FINAL (herda Personagem)
+================================================================================
+
+STATS:
+------
+Vida Máxima: 300
+Dano Base: 35
+Defesa Passiva: 10
+Chance Crítico: 20%
+Multiplicador Crítico: 3.0x
+
+ATRIBUTOS ESPECÍFICOS:
+----------------------
+dragao.dano                      : int   - 35
+dragao.defesa                    : int   - 10
+dragao.chance_critico            : int   - 20
+dragao.multiplicador_critico     : float - 3.0
+
+MÉTODOS PRIVADOS:
+-----------------
+_calcular_critico(dano_base: int) -> int
+    └─ Uso interno: calcula se ataque é crítico
+    └─ 20% chance de retornar dano_base * 3.0
+    └─ Imprime "CRÍTICO DEVASTADOR!" no console
+
+MÉTODOS PÚBLICOS:
+-----------------
+aplicar_dano(dano: int) -> None
+    └─ Override: Reduz TODO dano recebido em 10
+    └─ Se status 'escamas_de_ferro' ativo: reduz MAIS 15 (total: -25)
+    └─ Dano mínimo: 0
+
+sopro_de_fogo(alvos: list[Personagem]) -> None
+    └─ HABILIDADE AOE: Ataca múltiplos alvos
+    └─ Causa 40 de dano em CADA alvo vivo da lista
+    └─ Imprime mensagem para cada alvo atingido
+
+mordida(alvo: Personagem) -> None
+    └─ Causa 45 de dano (135 se crítico com 20% chance)
+
+escamas_de_ferro() -> None
+    └─ Aplica status 'escamas_de_ferro' por 3 turnos
+    └─ Efeito: Reduz dano recebido em +15 (total: -25)
+    └─ Implementado em aplicar_dano()
+
+voo_rasante(alvo: Personagem) -> None
+    └─ Causa 30 de dano ao alvo
+    └─ Aplica status 'fuga' em SI MESMO por 1 turno
+    └─ Efeito: Não pode ser atacado no próximo turno
+
+rugido_aterrorizante(alvos: list[Personagem]) -> None
+    └─ HABILIDADE AOE: Afeta múltiplos alvos
+    └─ 50% chance de confundir CADA alvo vivo
+    └─ Aplica status 'balada_da_confusao' por 2 turnos
+    └─ Imprime mensagem para cada alvo confundido
+
+atacar(alvo: Personagem) -> None
+    └─ Causa 35 de dano (105 se crítico com 20% chance)
+
+
+================================================================================
+12. STATUS DISPONÍVEIS NO SISTEMA
+================================================================================
+
+STATUS POSITIVOS (BUFFS):
+-------------------------
+'bomba_de_glitter'
+    └─ Duração padrão: 3 turnos
+    └─ Efeito: Imunidade total a dano
+    └─ Classe: Fada
+
+'musica_da_cura'
+    └─ Duração padrão: 2 turnos
+    └─ Efeito: +16 HP por turno (total: +32 HP)
+    └─ Classe: Bardo
+
+'fuga'
+    └─ Duração padrão: 1 turno
+    └─ Efeito: Não pode ser atacado
+    └─ Classes: Druida, Arqueiro, Assassino, Dragão
+
+'panela'
+    └─ Duração padrão: 1 turno (consumido ao receber dano)
+    └─ Efeito: Próximo dano recebido reduzido em 10
+    └─ Classe: Cozinheiro
+
+'furia'
+    └─ Duração padrão: 2 turnos
+    └─ Efeito: Dobra dano do método atacar()
+    └─ Classe: Demônio
+
+'escamas_de_ferro'
+    └─ Duração padrão: 3 turnos
+    └─ Efeito: Reduz dano recebido em +15
+    └─ Classe: Dragão
+    └─ Status: IMPLEMENTADO
+
+'pele_de_pedra'
+    └─ Duração padrão: 2 turnos
+    └─ Efeito: Deveria reduzir dano adicional
+    └─ Classe: Golem
+    └─ Status: ⚠️ NÃO IMPLEMENTADO (não funciona)
+
+STATUS NEGATIVOS (DEBUFFS):
+---------------------------
+'cristal_de_gelo'
+    └─ Duração padrão: 2 turnos
+    └─ Efeito: Alvo não pode agir (congelado)
+    └─ Classes: Fada, Arqueiro
+
+'prisao' / 'prissao'
+    └─ Duração padrão: 2 turnos
+    └─ Efeito: Alvo não pode agir (preso)
+    └─ Classe: Druida
+    └─ ⚠️ TYPO: Código aplica 'prisao', verifica 'prissao'
+
+'glitter_mortal'
+    └─ Duração padrão: 4 turnos
+    └─ Efeito: 15 dano por turno (total: 60 dano)
+    └─ Classe: Fada
+
+'microfonada'
+    └─ Duração padrão: 4 turnos
+    └─ Efeito: 15 dano por turno (total: 60 dano)
+    └─ Classe: Bardo
+
+'sangramento'
+    └─ Duração padrão: 3 turnos
+    └─ Efeito: 5 dano por turno (total: 15 dano)
+    └─ Classe: Assassino
+
+'balada_da_confusao'
+    └─ Duração padrão: 2 turnos
+    └─ Efeito: Ataca alvos aleatórios (pode atacar aliados)
+    └─ Classes: Bardo, Dragão (rugido)
+
+
+================================================================================
+13. FUNÇÕES AUXILIARES PARA GUI
+================================================================================
+
+def obter_vivos(lista_personagens: list[Personagem]) -> list[Personagem]:
+    """Retorna apenas personagens com vida > 0"""
+    return [p for p in lista_personagens if p.vida > 0]
+
+def verificar_vitoria(lista_personagens: list[Personagem]) -> bool:
+    """Verifica se restou apenas 1 ou nenhum sobrevivente"""
+    return len(obter_vivos(lista_personagens)) <= 1
+
+def obter_alvos_validos(atacante: Personagem, 
+                        todos: list[Personagem]) -> list[Personagem]:
+    """Retorna lista de alvos válidos (exceto o atacante, apenas vivos)"""
+    return [p for p in todos if p != atacante and p.vida > 0]
+
+def pode_agir(personagem: Personagem) -> tuple[bool, str]:
+    """
+    Verifica se personagem pode realizar ação
+    Retorna: (pode_agir: bool, motivo: str)
+    """
+    if personagem.esta_congelado():
+        return False, "Congelado - não pode agir"
+    if personagem.esta_preso():
+        return False, "Preso - não pode agir"
+    if personagem.esta_fugindo():
+        return False, "Em fuga - não pode atacar"
+    return True, ""
+
+def obter_habilidades(personagem: Personagem) -> list[str]:
+    """
+    Retorna lista de habilidades disponíveis para o personagem
+    """
+    if isinstance(personagem, Fada):
+        return ['bomba_de_glitter', 'cristal_de_gelo', 
+                'glitter_mortal', 'atacar']
+    elif isinstance(personagem, Bardo):
+        return ['balada_da_confusao', 'musica_da_cura', 
+                'microfonada', 'atacar']
+    elif isinstance(personagem, Cozinheiro):
+        return ['batata_quente', 'receita_da_mamae', 
+                'panela', 'atacar']
+    elif isinstance(personagem, Elfo):
+        if personagem.classe == "druida":
+            return ['se_transforma', 'fuga', 'prissao', 'atacar']
+        elif personagem.classe == "arqueiro":
+            return ['arco_e_flecha', 'agilidade', 
+                    'cristal_de_gelo', 'atacar']
+    elif isinstance(personagem, Golem):
+        return ['investida', 'regeneracao', 'pele_de_pedra', 'atacar']
+    elif isinstance(personagem, Demonio):
+        return ['garras_infernais', 'furia', 'drenar_vida', 'atacar']
+    elif isinstance(personagem, Assassino):
+        return ['apunhalar', 'furtividade', 'golpe_preciso', 'atacar']
+    elif isinstance(personagem, Dragao):
+        return ['sopro_de_fogo', 'mordida', 'escamas_de_ferro', 
+                'voo_rasante', 'rugido_aterrorizante', 'atacar']
+    return ['atacar']
+
+def executar_habilidade(atacante: Personagem, 
+                        habilidade: str, 
+                        alvo: Personagem = None,
+                        alvos: list[Personagem] = None) -> str:
+    """
+    Executa habilidade do atacante
+    Retorna: mensagem descritiva da ação
+    
+    Parâmetros:
+        atacante: Quem executa a ação
+        habilidade: Nome do método a ser executado
+        alvo: Alvo único (se aplicável)
+        alvos: Lista de alvos (para habilidades AOE)
+    """
+    try:
+        metodo = getattr(atacante, habilidade)
+        
+        # Habilidades AOE que recebem lista
+        if habilidade in ['sopro_de_fogo', 'rugido_aterrorizante']:
+            if alvos:
+                metodo(alvos)
+                return f"{atacante.nome} usou {habilidade} (AOE)"
+        
+        # Habilidades que requerem alvo
+        elif alvo and hasattr(metodo, '__code__') and \
+             metodo.__code__.co_argcount > 1:
+            metodo(alvo)
+            return f"{atacante.nome} usou {habilidade} em {alvo.nome}"
+        
+        # Habilidades sem alvo (self-buff/healing)
+        else:
+            metodo()
+            return f"{atacante.nome} usou {habilidade}"
+            
+    except Exception as e:
+        return f"Erro ao executar {habilidade}: {str(e)}"
+
+
+================================================================================
+14. BUGS E CORREÇÕES PENDENTES
+================================================================================
+
+⚠️ BUG CRÍTICO 1: Fada.atacar()
+Localização: Linha ~118
+Problema: Aplica dano em si mesmo ao invés do alvo
+Código atual:
+    def atacar(self, alvo):
+        if alvo.esta_congelado():
+            return
+        self.aplicar_dano(self.dano)  # ❌ ERRADO
+
+Correção:
+    def atacar(self, alvo):
+        if alvo.esta_congelado():
+            return
+        alvo.aplicar_dano(self.dano)  # ✅ CORRETO
+
+---
+
+⚠️ BUG CRÍTICO 2: Elfo.arco_e_flecha()
+Localização: Linha ~254
+Problema: Dano crítico não é aplicado
+Código atual:
+    def arco_e_flecha(self, alvo):
+        chance_critico = random.randint(1,10)
+        if chance_critico <= 3:
+            dano = 21
+            # ❌ Falta aplicar o dano!
+        else:
+            dano = 7
+            alvo.aplicar_dano(dano)
+
+Correção:
+    def arco_e_flecha(self, alvo):
+        chance_critico = random.randint(1,10)
+        if chance_critico <= 3:
+            dano = 21
+            alvo.aplicar_dano(dano)  # ✅ ADICIONAR
+        else:
+            dano = 7
+            alvo.aplicar_dano(dano)
+
+---
+
+⚠️ BUG CRÍTICO 3: Typo em prisão
+Localização: Linha ~242
+Problema: Inconsistência entre aplicação e verificação
+Código atual:
+    def prissao(self, alvo):  # Nome do método com typo
+        alvo.aplicar_status('prisao', 2)  # Aplica 'prisao'
+    
+    def esta_preso(self):
+        return 'prissao' in self.status  # Verifica 'prissao'
+
+Correção Opção 1 (Recomendada):
+    def prisao(self, alvo):  # ✅ Corrigir nome do método
+        alvo.aplicar_status('prisao', 2)
+    
+    def esta_preso(self):
+        return 'prisao' in self.status  # ✅ Verificar 'prisao'
+
+Correção Opção 2:
+    def prissao(self, alvo):
+        alvo.aplicar_status('prissao', 2)  # ✅ Usar 'prissao'
+    
+    def esta_preso(self):
+        return 'prissao' in self.status
+
+---
+
+⚠️ FUNCIONALIDADE NÃO IMPLEMENTADA: Golem.pele_de_pedra()
+Localização: Linha ~289
+Problema: Status é aplicado mas não tem efeito
+Código atual:
+    def pele_de_pedra(self):
+        self.aplicar_status('pele_de_pedra', 2)
+        # Status não é verificado em aplicar_dano()
+
+Correção em Golem.aplicar_dano():
+    def aplicar_dano(self, dano):
+        dano_reduzido = max(0, dano - self.defesa)
+        
+        # ✅ ADICIONAR:
+        if 'pele_de_pedra' in self.status:
+            dano_reduzido = max(0, dano_reduzido - 5)
+        
+        super().aplicar_dano(dano_reduzido)
+
+
+================================================================================
+15. EXEMPLO DE USO COMPLETO
+================================================================================
+
+from personagens import *
+
+# Criar personagens
+herois = [
+    Fada("Tinker Bell"),
+    Bardo("Orquestra"),
+    Cozinheiro("Gordon"),
+    Elfo("Legolas", "arqueiro"),
+    Elfo("Radagast", "druida")
+]
+
+inimigos = [
+    Golem("Rochoso"),
+    Demonio("Infernus"),
+    Assassino("Sombra"),
+    Dragao("Ancalagon")
+]
+
+# Loop de batalha
+todos = herois + inimigos
+rodada = 1
+
+while True:
+    print(f"\n=== RODADA {rodada} ===")
+    
+    vivos = obter_vivos(todos)
+    
+    if verificar_vitoria(todos):
+        print("Batalha encerrada!")
+        break
+    
+    for atacante in vivos:
+        pode, motivo = pode_agir(atacante)
+        
+        if not pode:
+            print(f"{atacante.nome}: {motivo}")
+            continue
+        
+        alvos_validos = obter_alvos_validos(atacante, vivos)
+        if not alvos_validos:
+            continue
+        
+        alvo = random.choice(alvos_validos)
+        habilidades = obter_habilidades(atacante)
+        habilidade = random.choice(habilidades)
+        
+        # Executar habilidade
+        if habilidade in ['sopro_de_fogo', 'rugido_aterrorizante']:
+            msg = executar_habilidade(atacante, habilidade, alvos=alvos_validos)
+        else:
+            msg = executar_habilidade(atacante, habilidade, alvo=alvo)
+        
+        print(msg)
+    
+    # Atualizar status
+    for p in vivos:
+        p.atualizar_status()
+    
+    rodada += 1
+
+# Exibir vencedor
+sobreviventes = obter_vivos(todos)
+if sobreviventes:
+    print(f"\n🏆 Vencedor: {sobreviventes[0].nome}")
+
+
+================================================================================
+FIM DA DOCUMENTAÇÃO
+================================================================================
+Versão: 1.0
+Data: 2025-11-02
+Arquivo: endpoints.txt
+================================================================================
