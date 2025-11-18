@@ -8,6 +8,7 @@ class Personagem(ABC):
         self.vida_maxima = vida
         self.velocidade = velocidade
         self.status = {} 
+        self.nome_ataque = ""
     
     def __str__(self):
         status_str = ", ".join([f"{k}({v})" for k, v in self.status.items()]) if self.status else "Nenhum"
@@ -104,10 +105,12 @@ class Personagem(ABC):
 class Fada(Personagem):
     def __init__(self, nome):
         super().__init__(nome, vida=65, velocidade=15)
+        self.nome_ataque = 'glitter_mortal'
 
     
     
     def atacar(self, alvo):
+        
         alvo.aplicar_status('glitter_mortal', 4)
         return 0
     
