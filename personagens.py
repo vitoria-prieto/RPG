@@ -1,125 +1,153 @@
 import random
 from abc import ABC, abstractmethod
+from enum import Enum
+from typing import Dict, List, Optional, Union
+
+class Status(Enum):
+    GLITTER_MORTAL = "glitter_mortal"
+    MICROFONADA = "microfonada"
+    SANGRAMENTO = "sangramento"
+    QUEIMADURA = "queimadura"
+    MUSICA_DA_CURA = "musica_da_cura"
+    BOMBA_DE_GLITTER = "bomba_de_glitter"
+    PANELA = "panela"
+    CRISTAL_DE_GELO = "cristal_de_gelo"
+    PRISAO = "prisao"
+    FUGA = "fuga"
+    BALADA_DA_CONFUSAO = "balada_da_confusao"
+    PELE_DE_PEDRA = "pele_de_pedra"
+    FURIA = "furia"
+    ESCAMAS_DE_FERRO = "escamas_de_ferro"
 
 class Personagem(ABC):
-    def __init__(self, nome, vida, velocidade):
+    def __init__(self, nome: str, vida: int, velocidade: int):
         self.nome = nome
         self.vida = vida
         self.vida_maxima = vida
         self.velocidade = velocidade
-        self.status = {} 
-        self.nome_ataque = ""
+        self.status: Dict[Status, int] = {} 
+        self.dano_base = 0
+        self.chance_critico = 0
+        self.multiplicador_critico = 1.0
     
+    @staticmethod
+    @abstractmethod
+    def obter_habilidades() -> Dict[str, str]:
+        """Retorna nomes das habilidades para a UI"""
+        pass
+
     def __str__(self):
-        status_str = ", ".join([f"{k}({v})" for k, v in self.status.items()]) if self.status else "Nenhum"
+        # Converte Enums para string legível na UI
+        status_str = ", ".join([f"{k.value}({v})" for k, v in self.status.items()]) if self.status else "Nenhum"
         return (f"{self.__class__.__name__}: {self.nome} | "
                 f"Vida: {self.vida}/{self.vida_maxima} | "
                 f"Velocidade: {self.velocidade} | "
                 f"Status: {status_str}")
     
-    def aplicar_dano(self, dano):
-        if 'bomba_de_glitter' in self.status:
+    def aplicar_dano(self, dano: int) -> int:
+        if Status.BOMBA_DE_GLITTER in self.status:
             return 0
         
-        if 'panela' in self.status:
+        if Status.PANELA in self.status:
             dano = max(0, dano - 10)
-            self.status.pop('panela')
+            self.status.pop(Status.PANELA)
         
         dano_aplicado = min(dano, self.vida)
         self.vida = max(0, self.vida - dano)
         return dano_aplicado
             
-    def aplicar_status(self, nome_status, duracao):
-        self.status[nome_status] = duracao
+    def aplicar_status(self, status: Status, duracao: int):
+        self.status[status] = duracao
+    
+    def curar(self, quantidade: int) -> int:
+        cura = min(quantidade, self.vida_maxima - self.vida)
+        self.vida = min(self.vida_maxima, self.vida + quantidade)
+        return cura
+    
+    def calcular_critico(self, dano: int) -> int:
+        if random.randint(1, 100) <= self.chance_critico:
+            return int(dano * self.multiplicador_critico)
+        return dano
         
-    def atualizar_status(self):
+    def atualizar_status(self) -> List[str]:
         to_remove = []
         eventos = []
         
-        for status, dur in list(self.status.items()):
-            if status == 'glitter_mortal':
-                dano = self.aplicar_dano(15)
-                eventos.append(f"{self.nome} sofre {dano} de glitter mortal")
-            elif status == 'musica_da_cura':
-                cura = min(16, self.vida_maxima - self.vida)
-                self.vida = min(self.vida_maxima, self.vida + 16)
-                eventos.append(f"{self.nome} regenera {cura} HP")
-            elif status == 'microfonada':
-                dano = self.aplicar_dano(15)
-                eventos.append(f"{self.nome} sofre {dano} de microfonada")
-            elif status == 'sangramento':
-                dano = self.aplicar_dano(5)
-                eventos.append(f"{self.nome} sangra {dano} HP")
-            elif status == 'queimadura':
-                dano = self.aplicar_dano(5)
-                eventos.append(f"{self.nome} queima {dano} HP")
+        # Mapeamento de Efeitos
+        efeitos_status = {
+            Status.GLITTER_MORTAL: (15, "sofre {dano} de glitter mortal"),
+            Status.MICROFONADA: (15, "sofre {dano} de microfonada"),
+            Status.SANGRAMENTO: (5, "sangra {dano} HP"),
+            Status.QUEIMADURA: (5, "queima {dano} HP"),
+            Status.MUSICA_DA_CURA: (-16, "regenera {dano} HP")
+        }
+        
+        # Itera sobre uma cópia para evitar erro de modificação durante iteração
+        for stat, dur in list(self.status.items()):
+            if stat in efeitos_status:
+                valor, msg = efeitos_status[stat]
+                if valor > 0:
+                    dano = self.aplicar_dano(valor)
+                else:
+                    dano = self.curar(abs(valor))
+                eventos.append(f"{self.nome} {msg.format(dano=dano)}")
 
-            if status in self.status: 
-                self.status[status] -= 1
-                if self.status[status] <= 0:
-                    to_remove.append(status)
+            if stat in self.status:
+                self.status[stat] -= 1
+                if self.status[stat] <= 0:
+                    to_remove.append(stat)
 
-        for status in to_remove:
-            if status in self.status:
-                self.status.pop(status)
+        for stat in to_remove:
+            self.status.pop(stat, None)
         
         return eventos
     
-    def esta_congelado(self):
-        return 'cristal_de_gelo' in self.status
+    def esta_impedido(self) -> bool:
+        impedimentos = [Status.CRISTAL_DE_GELO, Status.PRISAO, Status.FUGA]
+        return any(s in self.status for s in impedimentos)
     
-    def esta_preso(self):
-        return 'prisao' in self.status
-    
-    def esta_fugindo(self):
-        return 'fuga' in self.status
+    def get_nome_impedimento(self) -> Optional[str]:
+        mapa = {
+            Status.CRISTAL_DE_GELO: 'congelado',
+            Status.PRISAO: 'preso',
+            Status.FUGA: 'em fuga'
+        }
+        for s, msg in mapa.items():
+            if s in self.status:
+                return msg
+        return None
     
     def esta_confuso(self):
-        return 'balada_da_confusao' in self.status
-
-    def pode_agir(self):
-        return not (self.esta_congelado() or self.esta_preso() or self.esta_fugindo())
-
-    def get_impedimento(self):
-        if self.esta_congelado():
-            return "congelado"
-        elif self.esta_preso():
-            return "preso"
-        elif self.esta_fugindo():
-            return "em fuga"
-        return None
+        return Status.BALADA_DA_CONFUSAO in self.status
 
     @abstractmethod
-    def atacar(self, alvo):
-        pass
+    def atacar(self, alvo): pass
     
     @abstractmethod
-    def ataque_status(self, alvo):
-        pass
+    def ataque_status(self, alvo): pass
     
     @abstractmethod
-    def fuga(self):
-        pass
+    def fuga(self): pass
 
 
 class Fada(Personagem):
     def __init__(self, nome):
         super().__init__(nome, vida=65, velocidade=15)
-        self.nome_ataque = 'glitter_mortal'
-
     
+    @staticmethod
+    def obter_habilidades():
+        return {"Ataque": "Bomba de Glitter", "Especial": "Magia de Gelo", "Fuga": "Fumaça Mágica"}
     
     def atacar(self, alvo):
-        
-        alvo.aplicar_status('glitter_mortal', 4)
+        alvo.aplicar_status(Status.GLITTER_MORTAL, 4)
         return 0
     
     def fuga(self):
-        self.aplicar_status('bomba_de_glitter', 3)
+        self.aplicar_status(Status.BOMBA_DE_GLITTER, 3)
         return 0
     
     def ataque_status(self, alvo):
-        alvo.aplicar_status('cristal_de_gelo', 2)
+        alvo.aplicar_status(Status.CRISTAL_DE_GELO, 2)
         return 0
 
 
@@ -134,171 +162,119 @@ class Humano(Personagem):
         return alvo.aplicar_dano(20)
     
     def fuga(self):
-        cura = min(10, self.vida_maxima - self.vida)
-        self.vida = min(self.vida_maxima, self.vida + 10)
-        return cura
+        return self.curar(10)
 
 
 class Bardo(Humano):
     def __init__(self, nome):
         super().__init__(nome)
-        self.classe = 'bardo'
         self.velocidade = 10
+
+    @staticmethod
+    def obter_habilidades():
+        return {"Ataque": "Balada da Confusão", "Especial": "Microfonada", "Fuga": "Música da Cura"}
     
     def ataque_status(self, alvo):
-        alvo.aplicar_status('microfonada', 4)
+        alvo.aplicar_status(Status.MICROFONADA, 4)
         return 0
     
     def fuga(self):
-        self.aplicar_status('musica_da_cura', 2)
+        self.aplicar_status(Status.MUSICA_DA_CURA, 2)
         return 0
     
     def atacar(self, alvo):
+        # Bardo tem chance de causar confusão no ataque básico
         if random.randint(1, 10) <= 3:
-            alvo.aplicar_status('balada_da_confusao', 2)
-            return True
-        return False
+            alvo.aplicar_status(Status.BALADA_DA_CONFUSAO, 2)
+            return 0 # Confusão não causa dano imediato neste design
+        return alvo.aplicar_dano(8)
 
 
 class Cozinheiro(Humano):
     def __init__(self, nome):
         super().__init__(nome)
-        self.classe = 'cozinheiro'
         self.velocidade = 7
     
+    @staticmethod
+    def obter_habilidades():
+        return {"Ataque": "Batata Quente", "Especial": "Banquete (Cura)", "Fuga": "Defesa de Panela"}
+
     def atacar(self, alvo):
         dano = alvo.aplicar_dano(15)
-        alvo.aplicar_status('queimadura', 2)
+        alvo.aplicar_status(Status.QUEIMADURA, 2)
         return dano
     
     def fuga(self):
-        self.status['panela'] = 1
+        self.aplicar_status(Status.PANELA, 1)
         return 0
     
-    def ataque_status(self):
-        cura = min(15, self.vida_maxima - self.vida)
-        self.vida = min(self.vida_maxima, self.vida + 15)
-        return cura
+    def ataque_status(self, alvo=None): # Alvo é opcional pois cura a si mesmo
+        return self.curar(15)
 
 
 class Elfo(Personagem):
-    def __init__(self, nome, classe):
+    def __init__(self, nome):
         super().__init__(nome, vida=100, velocidade=12)
-        self.classe = classe
+    
+    @staticmethod
+    def obter_habilidades():
+        return {"Ataque": "Arco e Flecha", "Especial": "Flecha de Gelo", "Fuga": "Agilidade Élfica"}
 
     def fuga(self):
-        self.aplicar_status('fuga', 1)
-        return 0
+        return self.curar(10)
 
     def atacar(self, alvo):
         dano = 21 if random.randint(1, 10) <= 3 else 7
         return alvo.aplicar_dano(dano)
     
     def ataque_status(self, alvo):
-        alvo.aplicar_status('cristal_de_gelo', 2)
+        alvo.aplicar_status(Status.CRISTAL_DE_GELO, 2)
         return 0
 
 
+# Inimigos (Simplificados para brevidade, mas seguem a lógica)
 class Golem(Personagem):
-    def __init__(self, nome):
-        super().__init__(nome, vida=200, velocidade=3)
-        self.dano = 8
-        self.defesa = 5
-
-    
-    def atacar(self, alvo):
-        return alvo.aplicar_dano(12)
-    
-    def ataque_status(self, alvo):
-        dano = alvo.aplicar_dano(15)
-        alvo.aplicar_status('prisao', 1)
-        return dano
-    
-    def fuga(self):
-        self.aplicar_status('pele_de_pedra', 2)
-        return 0
-  
-
+    def __init__(self, nome): super().__init__(nome, 200, 3)
+    @staticmethod
+    def obter_habilidades(): return {}
+    def atacar(self, alvo): return alvo.aplicar_dano(12)
+    def ataque_status(self, alvo): 
+        d = alvo.aplicar_dano(15)
+        alvo.aplicar_status(Status.PRISAO, 1)
+        return d
+    def fuga(self): self.aplicar_status(Status.PELE_DE_PEDRA, 2); return 0
 
 class Demonio(Personagem):
-    def __init__(self, nome):
-        super().__init__(nome, vida=80, velocidade=14)
-        self.dano = 25
-    
-    def atacar(self, alvo):
-        dano = self.dano * 2 if 'furia' in self.status else self.dano
-        return alvo.aplicar_dano(dano)
-    
+    def __init__(self, nome): super().__init__(nome, 80, 14); self.dano_base = 25
+    @staticmethod
+    def obter_habilidades(): return {}
+    def atacar(self, alvo): 
+        d = self.dano_base * 2 if Status.FURIA in self.status else self.dano_base
+        return alvo.aplicar_dano(d)
     def ataque_status(self, alvo):
-        dano = alvo.aplicar_dano(30)
-        alvo.aplicar_status('sangramento', 3)
-        return dano
-    
-    def fuga(self):
-        self.aplicar_status('furia', 2)
-        return 0
-    
-    
-
+        d = alvo.aplicar_dano(30)
+        alvo.aplicar_status(Status.SANGRAMENTO, 3)
+        return d
+    def fuga(self): self.aplicar_status(Status.FURIA, 2); return 0
 
 class Assassino(Personagem):
-    def __init__(self, nome):
-        super().__init__(nome, vida=90, velocidade=18)
-        self.dano : int = 12
-        self.chance_critico = 40
-        self.multiplicador_critico = 2.5
-    
-    def _calcular_critico(self,dano : int):
-        num = random.randint(1,100)
-
-        if num < 25:
-            self.dano *= 2
-        return self.dano
-    
-    def atacar(self, alvo):
-        dano = self._calcular_critico(self.dano)
-        return alvo.aplicar_dano(dano)
-    
-    def ataque_status(self, alvo):
-        dano = self._calcular_critico(18)
-        dano_aplicado = alvo.aplicar_dano(dano)
-        alvo.aplicar_status('sangramento', 3)
-        return dano_aplicado
-    
-    def fuga(self):
-        self.aplicar_status('fuga', 1)
-        return 0
-
-
+    def __init__(self, nome): 
+        super().__init__(nome, 90, 18)
+        self.chance_critico = 25; self.multiplicador_critico = 2.0
+    @staticmethod
+    def obter_habilidades(): return {}
+    def atacar(self, alvo): return alvo.aplicar_dano(self.calcular_critico(12))
+    def ataque_status(self, alvo): 
+        d = alvo.aplicar_dano(self.calcular_critico(18))
+        alvo.aplicar_status(Status.SANGRAMENTO, 3); return d
+    def fuga(self): return self.curar(15)
 
 class Dragao(Personagem):
     def __init__(self, nome):
-        super().__init__(nome, vida=300, velocidade=10)
-        self.dano = 35
-        self.chance_critico = 20
-        self.multiplicador_critico = 3.0
-        self.defesa = 10
-    
-    def _calcular_critico(self,dano : int):
-        num = random.randint(1,100)
-
-        if num < 25:
-            self.dano *= 2
-        return self.dano    
-    
-    def atacar(self, alvo):
-        dano = self._calcular_critico(self.dano)
-        return alvo.aplicar_dano(dano)
-    
-    def ataque_status(self, alvo):
-        dano = self._calcular_critico(45)
-        return alvo.aplicar_dano(dano)
-    
-    def fuga(self):
-        self.aplicar_status('escamas_de_ferro', 3)
-        return 0
-    
-
-
-if __name__ == "__main__":
-   pass
+        super().__init__(nome, 300, 10)
+        self.chance_critico = 25; self.multiplicador_critico = 2.0
+    @staticmethod
+    def obter_habilidades(): return {}
+    def atacar(self, alvo): return alvo.aplicar_dano(self.calcular_critico(35))
+    def ataque_status(self, alvo): return alvo.aplicar_dano(self.calcular_critico(45))
+    def fuga(self): self.aplicar_status(Status.ESCAMAS_DE_FERRO, 3); return 0
