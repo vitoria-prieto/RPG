@@ -1,7 +1,3 @@
-Aqui está uma sugestão completa de `README.md` para o seu projeto, organizada para explicar a estrutura de classes, as mecânicas do jogo e as instruções de execução, baseada nos arquivos que você enviou.
-
------
-
 # RPG Turn Based ⚔️
 
 Um jogo de RPG em turnos desenvolvido em Python, utilizando a biblioteca `tkinter` para a interface gráfica e princípios de Programação Orientada a Objetos (POO) para a lógica de combate e personagens.
