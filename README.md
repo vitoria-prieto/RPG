@@ -1,3 +1,9 @@
+# Membros
+Esse projeto foi criado por:
+ - Thiago Ribeiro do Val Medeiros
+ - Vitória Rafaela Prieto da Silva
+ - Hauany Aparecida da Silva Lima Bueno
+
 # RPG Turn Based ⚔️
 
 Um jogo de RPG em turnos desenvolvido em Python, utilizando a biblioteca `tkinter` para a interface gráfica e princípios de Programação Orientada a Objetos (POO) para a lógica de combate e personagens.
